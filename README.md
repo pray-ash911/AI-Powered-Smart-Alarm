@@ -15,7 +15,7 @@ Features
 * SQLite Database – Stores and manages chatbot-related data persistently
 
 
-🛠️ Tech Stack
+Tech Stack
 
 * Backend: Flask (Python)
 * NLP Models: TinyBERT (Transformers)
