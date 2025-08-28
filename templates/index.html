@@ -701,6 +701,9 @@ What would you like to do?
                     sendMessage();
                 }
             });
+
+            // Start alarm polling
+            startAlarmPolling();
         });
 
         function autoResize() {
@@ -834,6 +837,87 @@ What would you like to do?
             }
         }
 
+        // -------------------------
+        // Alarm polling and beep
+        // -------------------------
+        let alarmPollTimer = null;
+
+        function startAlarmPolling() {
+            if (alarmPollTimer) return;
+            // Poll every 1 second for timely ringing
+            alarmPollTimer = setInterval(checkAlarms, 1000);
+        }
+
+        async function checkAlarms() {
+            try {
+                const res = await fetch('/check-alarms');
+                const data = await res.json();
+                if (data && data.status === 'ringing') {
+                    const label = data.label || 'Alarm';
+                    addMessage('bot', `🔔 ${label}: Hey! Your alarm is ringing!`);
+                    playBeep();
+                }
+            } catch (e) {
+                // silent fail to avoid UI noise
+            }
+        }
+
+        function playBeep() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+
+                let elapsed = 0;
+                const durationMs = 5000; // 5 seconds total
+                const burstMs = 250;      // each beep on
+                const gapMs = 250;        // each beep off
+
+                let osc = null;
+                let gain = null;
+
+                function startBurst() {
+                    osc = ctx.createOscillator();
+                    gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = 880; // A5 tone
+                    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+                    osc.start();
+                    setTimeout(stopBurst, burstMs);
+                }
+
+                function stopBurst() {
+                    if (!osc || !gain) return;
+                    try {
+                        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.02);
+                        setTimeout(() => {
+                            osc.stop();
+                            osc.disconnect();
+                            gain.disconnect();
+                            osc = null;
+                            gain = null;
+                        }, 60);
+                    } catch {}
+                }
+
+                function loop() {
+                    if (elapsed >= durationMs) {
+                        try { ctx.close(); } catch {}
+                        return;
+                    }
+                    startBurst();
+                    elapsed += burstMs + gapMs;
+                    setTimeout(loop, burstMs + gapMs);
+                }
+
+                loop();
+            } catch (e) {
+                // ignore if audio context blocked
+            }
+        }
+
         function getStatusText(state) {
             const statusTexts = {
                 'IDLE': 'Ready to help!',
@@ -904,15 +988,20 @@ What would you like to do?
             alarms.slice(0, 5).forEach(alarm => { // Show last 5 alarms
                 const alarmDiv = document.createElement('div');
                 alarmDiv.className = 'alarm-item';
+                const label = alarm.label && alarm.label !== 'Unnamed Alarm' ? alarm.label : 'Alarm';
+                const status = alarm.status || 'active';
+                const time = alarm.time || 'Not specified';
+                const date = alarm.date || new Date().toISOString().slice(0,10);
+                const repeat = alarm.repeat || 'None';
                 alarmDiv.innerHTML = `
                     <div class="alarm-header">
-                        <div class="alarm-label">${alarm.label}</div>
-                        <div class="alarm-status">${alarm.status}</div>
+                        <div class="alarm-label">${label}</div>
+                        <div class="alarm-status">${status}</div>
                     </div>
                     <div class="alarm-details">
-                        <div><i class="fas fa-clock"></i> ${alarm.time}</div>
-                        <div><i class="fas fa-calendar"></i> ${formatDate(alarm.date)}</div>
-                        ${alarm.repeat !== 'None' ? `<div><i class="fas fa-repeat"></i> ${alarm.repeat}</div>` : ''}
+                        <div><i class="fas fa-clock"></i> ${time}</div>
+                        <div><i class="fas fa-calendar"></i> ${formatDate(date)}</div>
+                        ${repeat !== 'None' ? `<div><i class="fas fa-repeat"></i> ${repeat}</div>` : ''}
                         <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">
                             Created: ${alarm.created_at}
                         </div>

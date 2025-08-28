@@ -6,6 +6,7 @@ import re
 import random
 import json
 
+
 class ConversationalAlarmFSM:
     def __init__(self):
         # Core FSM state
@@ -15,7 +16,7 @@ class ConversationalAlarmFSM:
         self.missing_fields = []
         self.conversation_context = {}
         self.story_progress = []
-        
+
         # Conversation memory
         self.user_name = None
         self.last_alarm_created = None
@@ -38,7 +39,7 @@ class ConversationalAlarmFSM:
                     ],
                     "time": [
                         "What time should this alarm ring?",
-                        "When do you want to be reminded?", 
+                        "When do you want to be reminded?",
                         "At what time should I wake you up?",
                         "Please tell me the alarm time:"
                     ],
@@ -169,7 +170,7 @@ class ConversationalAlarmFSM:
                 "Welcome! Let's set up your perfect alarm schedule. What do you need?"
             ],
             "acknowledgments": [
-                "Got it!", "Perfect!", "Understood!", "Alright!", "Excellent!", 
+                "Got it!", "Perfect!", "Understood!", "Alright!", "Excellent!",
                 "Great choice!", "Sounds good!", "That works!", "Nice!"
             ],
             "confirmations": [
@@ -202,7 +203,7 @@ class ConversationalAlarmFSM:
         # Action mapping
         self.action_mapping = {
             "set_alarm": "create_alarm",
-            "cancel_alarm": "delete_alarm", 
+            "cancel_alarm": "delete_alarm",
             "update_alarm": "update_alarm",
             "show_alarms": "list_alarms",
             "extend_alarm": "extend_alarm",
@@ -227,7 +228,7 @@ class ConversationalAlarmFSM:
     def extract_user_name(self, text):
         """Try to extract user's name from input"""
         name_patterns = [
-            r"i'm ([a-zA-Z]+)", r"i am ([a-zA-Z]+)", 
+            r"i'm ([a-zA-Z]+)", r"i am ([a-zA-Z]+)",
             r"my name is ([a-zA-Z]+)", r"call me ([a-zA-Z]+)"
         ]
         for pattern in name_patterns:
@@ -250,24 +251,24 @@ class ConversationalAlarmFSM:
         """Enhanced intent prediction with conversational awareness"""
         # Handle conversational intents first
         text_lower = user_input.lower().strip()
-        
+
         # Greeting detection
         if any(word in text_lower for word in ["hi", "hello", "hey", "good morning", "good evening"]):
             if not self.user_name:
                 self.user_name = self.extract_user_name(text_lower)
-            
+
         # Confirmation/Denial
         if self.state == "CONFIRMING":
             if any(word in text_lower for word in ["yes", "y", "confirm", "correct", "right", "ok", "sure"]):
                 return "confirm_action"
             elif any(word in text_lower for word in ["no", "n", "cancel", "wrong", "incorrect"]):
                 return "deny_action"
-        
+
         # Try model prediction first
         try:
             predicted_intent = intent_predict(user_input)
             intent_mapping = {
-                "SetAlarm": "set_alarm", "CancelAlarm": "cancel_alarm", 
+                "SetAlarm": "set_alarm", "CancelAlarm": "cancel_alarm",
                 "UpdateAlarm": "update_alarm", "ShowAlarms": "show_alarms",
                 "ExtendAlarm": "extend_alarm", "RepeatAlarm": "repeat_alarm",
                 "StartAlarm": "start_alarm", "StopAlarm": "stop_alarm"
@@ -279,30 +280,30 @@ class ConversationalAlarmFSM:
     def pattern_based_intent(self, text):
         """Pattern-based intent detection with conversational context"""
         text_lower = text.lower()
-        
+
         intent_patterns = {
-            "set_alarm": [r'set.*alarm', r'create.*alarm', r'new.*alarm', r'add.*alarm', 
-                         r'schedule.*alarm', r'wake.*me', r'remind.*me', r'alarm.*for'],
+            "set_alarm": [r'set.*alarm', r'create.*alarm', r'new.*alarm', r'add.*alarm',
+                          r'schedule.*alarm', r'wake.*me', r'remind.*me', r'alarm.*for'],
             "cancel_alarm": [r'cancel.*alarm', r'delete.*alarm', r'remove.*alarm',
-                            r'turn.*off.*alarm', r'stop.*alarm', r'kill.*alarm'],
+                             r'turn.*off.*alarm', r'stop.*alarm', r'kill.*alarm'],
             "update_alarm": [r'update.*alarm', r'change.*alarm', r'modify.*alarm',
-                            r'move.*alarm', r'reschedule.*alarm', r'edit.*alarm'],
+                             r'move.*alarm', r'reschedule.*alarm', r'edit.*alarm'],
             "show_alarms": [r'show.*alarm', r'list.*alarm', r'display.*alarm',
-                           r'what.*alarm', r'my.*alarm', r'check.*alarm'],
+                            r'what.*alarm', r'my.*alarm', r'check.*alarm'],
             "extend_alarm": [r'extend.*alarm', r'snooze.*alarm', r'delay.*alarm',
-                            r'postpone.*alarm', r'push.*back'],
+                             r'postpone.*alarm', r'push.*back'],
             "repeat_alarm": [r'repeat.*alarm', r'recurring.*alarm', r'daily.*alarm',
-                            r'weekly.*alarm', r'make.*repeat'],
+                             r'weekly.*alarm', r'make.*repeat'],
             "start_alarm": [r'start.*alarm', r'activate.*alarm', r'turn.*on.*alarm',
-                           r'enable.*alarm', r'begin.*alarm'],
+                            r'enable.*alarm', r'begin.*alarm'],
             "stop_alarm": [r'stop.*alarm', r'deactivate.*alarm', r'disable.*alarm',
-                          r'end.*alarm', r'silence.*alarm']
+                           r'end.*alarm', r'silence.*alarm']
         }
-        
+
         for intent, patterns in intent_patterns.items():
             if any(re.search(pattern, text_lower) for pattern in patterns):
                 return intent
-                
+
         return "unknown"
 
     def enhanced_ner_predict(self, user_input):
@@ -317,63 +318,63 @@ class ConversationalAlarmFSM:
         """Smart NER post-processing with context awareness"""
         processed = []
         original_words = original_text.lower().split()
-        
+
         for token, tag in ner_output:
             token_lower = token.lower()
-            
+
             # Fix repeat word context issue
             if tag == 'B-repeat' and token_lower == 'repeat':
                 # Check if this is actually about setting repetition
                 context_indicators = ['set', 'make', 'create', 'daily', 'weekly', 'monthly', 'every']
                 if not any(indicator in original_text.lower() for indicator in context_indicators):
                     tag = 'O'
-            
+
             # Enhance time detection
             elif re.match(r'\d{1,2}(:\d{2})?\s*(am|pm)', token_lower) and not tag.endswith('time'):
                 tag = 'B-time'
-            
+
             # Enhance date detection
             elif token_lower in ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday',
-                               'thursday', 'friday', 'saturday', 'sunday'] and not tag.endswith('date'):
+                                 'thursday', 'friday', 'saturday', 'sunday'] and not tag.endswith('date'):
                 tag = 'B-date'
-                
+
             processed.append((token, tag))
-            
+
         return processed
 
     def pattern_based_ner(self, text):
         """Conversational pattern-based NER"""
         tokens = text.split()
         result = []
-        
+
         # Enhanced patterns with conversational awareness
         time_patterns = [
             r'\d{1,2}:\d{2}\s*(am|pm)', r'\d{1,2}\s*(am|pm)', r'\d{1,2}:\d{2}',
             r'(morning|afternoon|evening|night|noon|midnight)',
             r'\d+\s*(minutes?|hours?|mins?|hrs?|min|hr)'
         ]
-        
+
         date_patterns = [
             r'(today|tomorrow|yesterday)', r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
             r'next\s+(week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
             r'\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}'
         ]
-        
+
         repeat_patterns = [
             r'(daily|weekly|monthly|yearly)', r'every\s+(day|week|month|year)',
             r'(weekdays|weekends)', r'once\s+a\s+(day|week|month)'
         ]
-        
+
         # Conversational skip words
         skip_words = {
             'set', 'alarm', 'for', 'at', 'on', 'to', 'the', 'a', 'an', 'called', 'named',
             'please', 'can', 'could', 'would', 'will', 'i', 'want', 'need', 'like',
             'my', 'me', 'and', 'or', 'but', 'so', 'then', 'now', 'also'
         }
-        
+
         for i, token in enumerate(tokens):
             token_lower = token.lower()
-            
+
             # Smart entity detection with context
             if any(re.search(p, token_lower) for p in time_patterns):
                 result.append((token, 'B-time'))
@@ -381,38 +382,38 @@ class ConversationalAlarmFSM:
                 result.append((token, 'B-date'))
             elif any(re.search(p, token_lower) for p in repeat_patterns):
                 result.append((token, 'B-repeat'))
-            elif (token_lower not in skip_words and len(token) > 1 and 
+            elif (token_lower not in skip_words and len(token) > 1 and
                   re.match(r'^[a-zA-Z][a-zA-Z0-9_\-]*$', token)):
                 # Context-aware label detection
-                context = ' '.join(tokens[max(0, i-2):i+3]).lower()
+                context = ' '.join(tokens[max(0, i - 2):i + 3]).lower()
                 if any(indicator in context for indicator in ['called', 'named', 'for', 'alarm']):
                     result.append((token, 'B-label'))
                 else:
                     result.append((token, 'O'))
             else:
                 result.append((token, 'O'))
-                
+
         return result
 
     def validate_time(self, time_str):
         """Enhanced time validation with conversational feedback"""
         if not time_str:
             return None, "I need to know what time you'd like the alarm. Could you tell me?"
-            
+
         time_str = time_str.strip().lower()
-        
+
         # Duration patterns (for extend_alarm)
         duration_patterns = [
             (r'(\d+(?:\.\d+)?)\s*(sec|second|seconds)', lambda m: f"{float(m.group(1))} seconds"),
             (r'(\d+(?:\.\d+)?)\s*(min|minute|minutes)', lambda m: f"{float(m.group(1))} minutes"),
             (r'(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours)', lambda m: f"{float(m.group(1))} hours"),
         ]
-        
+
         for pattern, formatter in duration_patterns:
             match = re.search(pattern, time_str)
             if match:
                 return formatter(match), None
-        
+
         # Natural language times
         natural_times = {
             'noon': '12:00 PM', 'midnight': '12:00 AM',
@@ -421,7 +422,7 @@ class ConversationalAlarmFSM:
         }
         if time_str in natural_times:
             return natural_times[time_str], None
-        
+
         # Time format parsing
         try:
             if re.match(r'^\d{1,2}:\d{2}\s*(am|pm)$', time_str):
@@ -456,7 +457,7 @@ class ConversationalAlarmFSM:
             elif hour == 12:
                 return f"12:{minute:02d} PM"
             else:
-                return f"{hour-12}:{minute:02d} PM"
+                return f"{hour - 12}:{minute:02d} PM"
         except:
             return time_str
 
@@ -464,16 +465,16 @@ class ConversationalAlarmFSM:
         """Enhanced date validation with conversational feedback"""
         if not date_str:
             return None, "Which day would you like this alarm? You can say 'today', 'tomorrow', or a specific date."
-            
+
         date_str = date_str.strip().lower()
         today = datetime.today()
-        
+
         # Handle relative dates
         if date_str == "today":
             return today.strftime("%Y-%m-%d"), None
         elif date_str == "tomorrow":
             return (today + timedelta(days=1)).strftime("%Y-%m-%d"), None
-            
+
         # Handle weekdays
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         if date_str in weekdays:
@@ -483,38 +484,38 @@ class ConversationalAlarmFSM:
                 days_ahead = 7
             target_date = today + timedelta(days=days_ahead)
             return target_date.strftime("%Y-%m-%d"), None
-            
+
         return None, "I didn't understand that date. Try 'today', 'tomorrow', a day of the week, or a date like '25/12/2024'."
 
     def validate_repeat(self, repeat_str):
         """Enhanced repeat validation with suggestions"""
         if not repeat_str:
             return None, "How often should this alarm repeat? Try 'daily', 'weekly', 'weekdays', or 'every monday'."
-            
+
         repeat_str = repeat_str.strip().lower()
-        
+
         valid_patterns = {
             'daily': 'daily', 'weekly': 'weekly', 'monthly': 'monthly',
             'weekdays': 'weekdays', 'weekends': 'weekends',
             'every day': 'daily', 'every week': 'weekly'
         }
-        
+
         if repeat_str in valid_patterns:
             return valid_patterns[repeat_str], None
-            
+
         # Handle "every [weekday]"
         weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         for day in weekdays:
             if repeat_str == f"every {day}":
                 return f"every_{day}", None
-                
+
         return None, "I didn't understand that repeat pattern. Try 'daily', 'weekly', 'weekdays', or 'every monday'."
 
     def validate_label(self, label_str):
         """Enhanced label validation with suggestions"""
         if not label_str:
             return None, "What would you like to call this alarm? Give it a name like 'workout', 'meeting', or 'medicine'."
-            
+
         # Clean the label
         filler_words = {'the', 'a', 'an', 'my', 'this', 'called', 'named', 'alarm'}
         words = []
@@ -522,10 +523,10 @@ class ConversationalAlarmFSM:
             clean_word = re.sub(r'[^\w\s]', '', word.lower())
             if clean_word not in filler_words and len(clean_word) > 0:
                 words.append(word)
-                
+
         if not words:
             return None, "I need a name for this alarm. What should I call it?"
-            
+
         return ' '.join(words[:3]), None
 
     def get_entity_prompt(self, field):
@@ -539,7 +540,7 @@ class ConversationalAlarmFSM:
     def generate_confirmation(self):
         """Generate conversational confirmation message"""
         confirmation_start = random.choice(self.responses["confirmations"])
-        
+
         # Build confirmation details
         details = []
         if "label" in self.entities:
@@ -550,17 +551,17 @@ class ConversationalAlarmFSM:
             details.append(f"📅 Date: {self.entities['date']}")
         if "repeat" in self.entities:
             details.append(f"🔁 Repeat: {self.entities['repeat']}")
-            
+
         details_text = "\n".join(details)
         return f"{confirmation_start}\n\n{details_text}\n\n💬 Should I go ahead? (yes/no)"
 
     def process_input(self, user_input):
         """Main conversational FSM processing"""
         user_input = user_input.strip()
-        
+
         # Store in conversation history
         self.conversation_history.append({"user": user_input, "timestamp": datetime.now()})
-        
+
         # Handle special commands
         if user_input.lower() in ["help", "?", "what can you do"]:
             return self.show_help()
@@ -574,17 +575,17 @@ class ConversationalAlarmFSM:
             return self.handle_entity_collection(user_input)
         elif self.state == "CONFIRMING":
             return self.handle_confirmation(user_input)
-            
+
         return self.get_random_response("errors")
 
     def handle_initial_input(self, user_input):
         """Handle initial input with conversational flow"""
         # Detect intent
         self.current_intent = self.enhanced_intent_predict(user_input)
-        
+
         if self.current_intent == "unknown":
             return f"{self.get_random_response('errors')} Try something like 'set workout alarm for 7 AM' or 'show my alarms'."
-        
+
         # Extract entities
         ner_output = self.enhanced_ner_predict(user_input)
         entities = {}
@@ -595,7 +596,7 @@ class ConversationalAlarmFSM:
             elif tag.startswith('i-') and tag[2:] in entities:
                 entities[tag[2:]] += ' ' + token
         self.entities = entities
-        
+
         # Validate entities
         for entity_type in ['time', 'date', 'repeat', 'label']:
             if entity_type in self.entities:
@@ -604,16 +605,16 @@ class ConversationalAlarmFSM:
                     self.entities.pop(entity_type)
                 else:
                     self.entities[entity_type] = val
-        
+
         # Check for missing required fields
         story = self.intent_stories.get(self.current_intent, {})
         required_fields = story.get("required_fields", [])
         self.missing_fields = [f for f in required_fields if f not in self.entities]
-        
+
         # Handle special case: show_alarms doesn't need confirmation
         if self.current_intent == "show_alarms":
             return self.execute_action()
-        
+
         # Progress story flow
         if self.missing_fields:
             self.state = "COLLECTING_ENTITIES"
@@ -621,7 +622,7 @@ class ConversationalAlarmFSM:
             prompt = self.get_entity_prompt(self.missing_fields[0])
             return f"{acknowledgment} {prompt}"
         else:
-            self.state = "CONFIRMING" 
+            self.state = "CONFIRMING"
             return self.generate_confirmation()
 
     def handle_entity_collection(self, user_input):
@@ -629,26 +630,26 @@ class ConversationalAlarmFSM:
         if not self.missing_fields:
             self.state = "CONFIRMING"
             return self.generate_confirmation()
-            
+
         field = self.missing_fields[0]
-        
+
         # Validate the input
         val, err = getattr(self, f'validate_{field}')(user_input)
-        
+
         if err:
             self.retry_count += 1
             if self.retry_count >= self.max_retries:
                 self.reset()
                 return "I'm having trouble understanding. Let's start fresh. What would you like to do?"
             return f"{err} Let's try again:"
-            
+
         # Success!
         self.entities[field] = val
         self.missing_fields.remove(field)
         self.retry_count = 0
-        
+
         acknowledgment = random.choice(self.responses["acknowledgments"])
-        
+
         if self.missing_fields:
             next_prompt = self.get_entity_prompt(self.missing_fields[0])
             return f"{acknowledgment} {field.title()}: {val}\n\n{next_prompt}"
@@ -659,7 +660,7 @@ class ConversationalAlarmFSM:
     def handle_confirmation(self, user_input):
         """Handle confirmation with conversational responses"""
         intent = self.enhanced_intent_predict(user_input)
-        
+
         if intent == "confirm_action" or user_input.lower().strip() in ["yes", "y", "ok", "sure", "confirm"]:
             result = self.execute_action()
             self.reset()
@@ -705,17 +706,17 @@ Ready to help! What would you like to do? 😊"""
         """Execute action with conversational response"""
         sql_query = self.generate_sql()
         action_type = self.action_mapping.get(self.current_intent, "unknown_action")
-        
+
         # Generate conversational success response
         response = self.generate_success_response()
-        
+
         # Store last action for context
         self.last_alarm_created = {
             "intent": self.current_intent,
             "entities": self.entities.copy(),
             "timestamp": datetime.now()
         }
-        
+
         return f"{response}\n\n💾 SQL: {sql_query}\n\n{random.choice(self.responses['farewells'])}"
 
     def generate_success_response(self):
@@ -724,10 +725,10 @@ Ready to help! What would you like to do? 😊"""
         time_val = self.entities.get('time', '')
         date_val = self.entities.get('date', '')
         repeat_val = self.entities.get('repeat', '')
-        
+
         success_templates = {
             "set_alarm": [
-                f"🎯 Perfect! I've created your '{label}' alarm for {time_val}" + 
+                f"🎯 Perfect! I've created your '{label}' alarm for {time_val}" +
                 (f" on {self.format_date_friendly(date_val)}" if date_val else "") +
                 (f", repeating {repeat_val}" if repeat_val else "") + ".",
                 f"✅ Your '{label}' alarm is all set for {time_val}" +
@@ -773,7 +774,7 @@ Ready to help! What would you like to do? 😊"""
                 f"💤 All quiet! '{label}' alarm is deactivated."
             ]
         }
-        
+
         templates = success_templates.get(self.current_intent, ["Action completed successfully!"])
         return random.choice(templates)
 
@@ -781,11 +782,11 @@ Ready to help! What would you like to do? 😊"""
         """Convert date to friendly format"""
         if not date_str:
             return ""
-            
+
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             today = datetime.now()
-            
+
             if date_obj.date() == today.date():
                 return "today"
             elif date_obj.date() == (today + timedelta(days=1)).date():
@@ -799,10 +800,10 @@ Ready to help! What would you like to do? 😊"""
         """Generate SQL with enhanced formatting"""
         if not self.entities:
             return ""
-            
+
         def sql_escape(value):
             return value.replace("'", "''") if isinstance(value, str) else str(value)
-        
+
         clean_entities = {}
         for k, v in self.entities.items():
             if v and str(v).strip():
@@ -815,85 +816,85 @@ Ready to help! What would you like to do? 😊"""
             for k, v in clean_entities.items():
                 cols.append(k)
                 vals.append(f"'{v}'")
-            
+
             # Add default date if not provided
             if 'date' not in clean_entities:
                 cols.append('date')
                 vals.append(f"'{datetime.now().strftime('%Y-%m-%d')}'")
-                
+
             return f"INSERT INTO alarms ({', '.join(cols)}) VALUES ({', '.join(vals)});"
-            
+
         elif self.current_intent == "cancel_alarm":
             label = clean_entities.get('label', 'alarm')
             conditions = [f"label = '{label}'"]
-            
+
             for field in ['time', 'date']:
                 if field in clean_entities:
                     conditions.append(f"{field} = '{clean_entities[field]}'")
-                    
+
             return f"DELETE FROM alarms WHERE {' AND '.join(conditions)};"
-            
+
         elif self.current_intent == "update_alarm":
             label = clean_entities.get('label', 'alarm')
             updates = []
-            
+
             for field in ['time', 'date', 'repeat']:
                 if field in clean_entities:
                     updates.append(f"{field} = '{clean_entities[field]}'")
-                    
+
             if not updates:
                 updates.append("updated_at = CURRENT_TIMESTAMP")
-                
+
             return f"UPDATE alarms SET {', '.join(updates)} WHERE label = '{label}';"
-            
+
         elif self.current_intent == "show_alarms":
             base_query = "SELECT label, time, date, repeat, status FROM alarms"
             conditions = []
-            
+
             for field in ['label', 'date', 'status']:
                 if field in clean_entities:
                     conditions.append(f"{field} = '{clean_entities[field]}'")
-                    
+
             if conditions:
                 base_query += f" WHERE {' AND '.join(conditions)}"
-                
+
             return base_query + " ORDER BY date ASC, time ASC;"
-            
+
         elif self.current_intent == "extend_alarm":
             label = clean_entities.get('label', 'alarm')
             extension = clean_entities.get('time', '10 minutes')
-            
+
             return f"""UPDATE alarms 
                       SET extended_by = '{extension}', 
                           status = 'extended', 
                           extended_at = CURRENT_TIMESTAMP 
                       WHERE label = '{label}' AND status = 'active';"""
-            
+
         elif self.current_intent == "repeat_alarm":
             label = clean_entities.get('label', 'alarm')
             repeat_pattern = clean_entities.get('repeat', 'daily')
-            
+
             return f"""UPDATE alarms 
                       SET repeat_pattern = '{repeat_pattern}', 
                           updated_at = CURRENT_TIMESTAMP 
                       WHERE label = '{label}';"""
-            
+
         elif self.current_intent == "start_alarm":
             label = clean_entities.get('label', 'alarm')
-            
+
             return f"""UPDATE alarms 
                       SET status = 'active', 
                           started_at = CURRENT_TIMESTAMP 
                       WHERE label = '{label}';"""
-            
+
         elif self.current_intent == "stop_alarm":
             label = clean_entities.get('label', 'alarm')
-            
+
             return f"""UPDATE alarms 
                       SET status = 'stopped', 
                           stopped_at = CURRENT_TIMESTAMP 
                       WHERE label = '{label}' AND status IN ('active', 'ringing');"""
-        
+
         return f"-- No SQL generated for intent: {self.current_intent}"
 
     def get_conversation_stats(self):
@@ -919,36 +920,38 @@ Ready to help! What would you like to do? 😊"""
             "timestamp": datetime.now().isoformat()
         }
 
+
 # Example usage and test function
 def demo_conversation():
     """Demo conversation flow"""
     fsm = ConversationalAlarmFSM()
-    
+
     test_inputs = [
         "Hi there, I'm Sarah",
         "I need to set an alarm",
         "workout",
         "7 AM",
-        "tomorrow", 
+        "tomorrow",
         "yes",
         "show my alarms",
         "cancel the workout alarm",
         "yes"
     ]
-    
+
     print("🎭 **RASA-Style Conversation Demo**")
     print("=" * 50)
-    
+
     for i, user_input in enumerate(test_inputs, 1):
         print(f"\n👤 User: {user_input}")
         response = fsm.process_input(user_input)
         print(f"🤖 Bot: {response}")
-        
+
         if i == 3:  # After collecting some info
             print(f"📊 Stats: {fsm.get_conversation_stats()}")
-    
+
     print(f"\n📋 **Final Conversation Log:**")
     print(json.dumps(fsm.export_conversation_log(), indent=2, default=str))
+
 
 if __name__ == "__main__":
     demo_conversation()
