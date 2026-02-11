@@ -25,22 +25,6 @@ Tech Stack
 * Alarm Management: Custom alarm\_manager.py with datetime
 
 
-Project Structure
-
-
-chatbot/
-│── app.py                  # Main Flask app
-│── alarm_manager.py        # Alarm Manager (add/check alarms)
-│── models/
-│   ├── intent_model.py     # TinyBERT intent classifier
-│   ├── ner_model.py        # TinyBERT NER model
-│   └── fsm.py              # Finite State Machine for slot filling & context
-│── templates/
-│   └── index.html          # Frontend chatbot UI
-│── static/                 # (Optional: JS/CSS files for UI)
-│── requirements.txt        # Dependencies
-
-
 How It Works
 
 1. User Input → The chatbot frontend sends a message to Flask
